@@ -6,6 +6,10 @@
   "keywords": [
     "homebridge-plugin"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stahn/homebridge-file-switch.git"
+  },
   "engines": {
     "node": ">=14.18.1",
     "homebridge": ">=1.3.5"

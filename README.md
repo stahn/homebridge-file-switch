@@ -1,20 +1,29 @@
 # Homebridge File Switch Plugin
 
-A Homebridge plugin for switching configuration files
+A Homebridge plugin for switching configuration files. It allows you to toggle between two different configuration files and automatically trigger actions (like container restart) when the switch is toggled.
 
-## Przygotowanie systemu
+## Use Case Example
 
-1. Upewnij się, że katalog z konfiguracją go2rtc ma odpowiednie uprawnienia:
+This plugin was originally created to manage go2rtc camera streams configuration. It switches between two different go2rtc.yaml configurations:
+- When turned ON: switches to a configuration that enables all camera streams
+- When turned OFF: switches to a configuration that disables all camera streams
+- Automatically restarts the go2rtc container when configuration changes
+
+While this example focuses on go2rtc, the plugin can be used to switch between any two configuration files and trigger custom actions.
+
+## System Preparation (go2rtc example)
+
+1. Ensure the go2rtc configuration directory has proper permissions:
 ```bash
 chmod 755 /home/pi/go2rtc
 ```
 
-2. Utwórz skrypt monitorujący zmiany w konfiguracji:
+2. Create a monitoring script to detect configuration changes:
 ```bash
 sudo nano /home/pi/go2rtc/monitor-config.sh
 ```
 
-Dodaj następującą zawartość:
+Add the following content:
 ```bash
 #!/bin/bash
 
@@ -31,22 +40,22 @@ while true; do
 done
 ```
 
-4. Nadaj odpowiednie uprawnienia dla skryptu:
+3. Set appropriate permissions for the script:
 ```bash
 sudo chown pi:pi /home/pi/go2rtc/monitor-config.sh
 chmod 755 /home/pi/go2rtc/monitor-config.sh
 
-# Sprawdź czy skrypt działa
+# Test if the script works
 /home/pi/go2rtc/monitor-config.sh
-# Naciśnij Ctrl+C aby zatrzymać test
+# Press Ctrl+C to stop the test
 ```
 
-4. Utwórz serwis systemd do monitorowania zmian:
+4. Create a systemd service to monitor changes:
 ```bash
 sudo nano /etc/systemd/system/go2rtc-monitor.service
 ```
 
-Dodaj następującą zawartość:
+Add the following content:
 ```ini
 [Unit]
 Description=Monitor go2rtc config changes
@@ -61,82 +70,82 @@ User=pi
 WantedBy=multi-user.target
 ```
 
-6. Uruchom i włącz serwis monitorujący:
+5. Enable and start the monitoring service:
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable go2rtc-monitor
 sudo systemctl start go2rtc-monitor
 
-# Sprawdź status serwisu
+# Check service status
 sudo systemctl status go2rtc-monitor
 
-# Jeśli są błędy, sprawdź logi
+# If there are errors, check logs
 journalctl -u go2rtc-monitor -f
 ```
 
-## Installation Instructions / Instrukcja instalacji
+## Plugin Installation
 
-### For Docker-based Homebridge installation:
+### For Docker-based Homebridge:
 
 1. Connect to your Raspberry Pi via SSH:
 ```bash
-ssh pi@192.168.1.187
+ssh pi@your_raspberry_ip
 ```
 
-2. Create necessary directories on Raspberry Pi:
+2. Create necessary directories:
 ```bash
-# Create directory for the plugin
 sudo mkdir -p /home/pi/homebridge/volumes/homebridge/node_modules/homebridge-file-switch
 sudo chown -R pi:pi /home/pi/homebridge/volumes/homebridge/node_modules/homebridge-file-switch
 ```
 
-3. Copy plugin files to Raspberry Pi:
+3. Copy plugin files:
 ```bash
-# From your local machine (run this on your Mac):
-scp -r /Users/stanislawm/my_code/smarthome/homebridge-file-switch/* pi@192.168.1.187:/home/pi/homebridge/volumes/homebridge/node_modules/homebridge-file-switch/
+# From your local machine:
+scp -r /path/to/homebridge-file-switch/* pi@your_raspberry_ip:/home/pi/homebridge/volumes/homebridge/node_modules/homebridge-file-switch/
 ```
 
-4. Install plugin dependencies (using Docker container):
+4. Install dependencies:
 ```bash
-# Navigate to homebridge directory
 cd /home/pi/homebridge
-
-# Run npm install inside the container
 docker compose exec homebridge npm install --prefix /homebridge/node_modules/homebridge-file-switch
 ```
 
-5. Fix permissions after installation:
+5. Fix permissions:
 ```bash
 sudo chown -R root:root /home/pi/homebridge/volumes/homebridge/node_modules/homebridge-file-switch
 ```
 
-6. Add the plugin configuration to your Homebridge config:
+6. Configure the plugin in Homebridge:
 ```bash
 sudo nano /home/pi/homebridge/volumes/homebridge/config.json
 ```
 
-Add this to the "accessories" section:
+Add to the "accessories" section:
 ```json
 {
   "accessory": "FileSwitch",
-  "name": "My File Switch"
+  "name": "Camera Streams",
+  "openConfigPath": "/go2rtc/go2rtc-open.yaml",
+  "closedConfigPath": "/go2rtc/go2rtc-closed.yaml",
+  "currentConfigPath": "/go2rtc/go2rtc.yaml"
 }
 ```
 
-7. Restart Homebridge container:
+7. Restart Homebridge:
 ```bash
 cd /home/pi/homebridge
 docker compose restart homebridge
 ```
 
-## Verification / Weryfikacja
+## Verification
 
-- English: After installation, you should see a new switch accessory in your Apple Home app named "My File Switch" (or the name you configured).
-- Polski: Po instalacji powinieneś zobaczyć nowy przełącznik w aplikacji Apple Home o nazwie "My File Switch" (lub nazwie, którą skonfigurowałeś).
+After installation, you should see a new switch accessory in your Apple Home app with the name you configured. Toggling the switch will:
+1. Copy the appropriate configuration file
+2. Trigger the monitoring service to detect the change
+3. Restart the affected container
 
 ## Troubleshooting
 
-If the plugin is not visible in Homebridge:
 1. Check if the plugin directory exists and has all files:
 ```bash
 ls -la /home/pi/homebridge/volumes/homebridge/node_modules/homebridge-file-switch
@@ -147,16 +156,12 @@ ls -la /home/pi/homebridge/volumes/homebridge/node_modules/homebridge-file-switc
 ls -la /home/pi/homebridge/volumes/homebridge/node_modules/
 ```
 
-3. Check Homebridge logs for any errors:
+3. Check Homebridge logs:
 ```bash
 cd /home/pi/homebridge
-docker-compose logs homebridge
+docker compose logs homebridge
 ```
 
-4. If needed, fix permissions to match other plugins:
-```bash
-sudo chown -R root:root /home/pi/homebridge/volumes/homebridge/node_modules/homebridge-file-switch
-```
 4. Check monitor service status:
 ```bash
 sudo systemctl status go2rtc-monitor
@@ -167,7 +172,7 @@ sudo systemctl status go2rtc-monitor
 journalctl -u go2rtc-monitor -f
 ```
 
-6. Verify go2rtc directory permissions:
+6. Verify directory permissions:
 ```bash
 ls -la /home/pi/go2rtc
 ```
