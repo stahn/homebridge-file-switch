@@ -131,6 +131,25 @@ Add to the "accessories" section:
 }
 ```
 
+Make sure to mount the configuration directory in your docker-compose.yml:
+```yaml
+services:
+  homebridge:
+    image: homebridge/homebridge:latest
+    restart: always
+    network_mode: host
+    volumes:
+      - ./volumes/homebridge:/homebridge
+      - /home/pi/go2rtc:/go2rtc:rw  # Mount go2rtc config directory
+    logging:
+      driver: json-file
+      options:
+        max-size: "10mb"
+        max-file: "1"
+```
+
+Note: The path `/go2rtc` in the container must match the paths in your plugin configuration.
+
 7. Restart Homebridge:
 ```bash
 cd /home/pi/homebridge
@@ -175,5 +194,4 @@ journalctl -u go2rtc-monitor -f
 6. Verify directory permissions:
 ```bash
 ls -la /home/pi/go2rtc
-```
 ```
