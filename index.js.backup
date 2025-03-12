@@ -1,0 +1,43 @@
+const { API } = require('homebridge');
+
+let hap;
+
+module.exports = (api) => {
+  hap = api.hap;
+  api.registerAccessory('FileSwitch', FileSwitchAccessory);
+};
+
+class FileSwitchAccessory {
+  constructor(log, config, api) {
+    this.log = log;
+    this.config = config;
+    this.api = api;
+
+    // Get name from config or set default
+    this.name = config.name || 'File Switch';
+
+    // Create switch service
+    this.switchService = new hap.Service.Switch(this.name);
+
+    // Add characteristic for on/off
+    this.switchService
+      .getCharacteristic(hap.Characteristic.On)
+      .onGet(this.getOn.bind(this))
+      .onSet(this.setOn.bind(this));
+
+    this.state = false;
+  }
+
+  async getOn() {
+    return this.state;
+  }
+
+  async setOn(value) {
+    this.state = value;
+    this.log.info(`Switch state was set to: ${value}`);
+  }
+
+  getServices() {
+    return [this.switchService];
+  }
+} 
